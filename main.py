@@ -29,7 +29,8 @@ from .jobs import create_job, get_job, run_in_background
 app = FastAPI(title="CNN Adversarial Robustness Research Platform")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+# Fixed: Use the root directory where index.html, style.css, and app.js are located
+FRONTEND_DIR = os.path.dirname(os.path.dirname(__file__))
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -368,7 +369,7 @@ def gradcam_run(req: GradCamReq):
             x, y = x.to(STATE.device), y.to(STATE.device)
             x_in = x
             if req.mode == "adversarial":
-                atk = build_attack(req.attack, STATE.model, eps=req.epsilon,
+                atk = build_attack(req.attack, STATE.model, eps=0.031,
                                     alpha=2 / 255, steps=10, n_classes=STATE.num_classes)
                 x_in = atk(x, y)
             cams, out = cam_engine(x_in, target_class=y)
