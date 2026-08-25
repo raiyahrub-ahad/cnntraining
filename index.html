@@ -6,6 +6,96 @@
 <title>CNN Adversarial Robustness Research Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
+<style>
+.workflow-container {
+  margin: 20px 0;
+  padding: 20px;
+  background: #1a1a2e;
+  border-radius: 8px;
+  position: relative;
+}
+canvas#workflow-canvas {
+  width: 100%;
+  height: 500px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #0f0f1e;
+  display: block;
+  cursor: grab;
+}
+canvas#workflow-canvas:active {
+  cursor: grabbing;
+}
+.log-entry {
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: #2a2a3e;
+  border-left: 3px solid #45B7D1;
+  border-radius: 2px;
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #e0e0e0;
+}
+.log-entry.success {
+  border-left-color: #95E1D3;
+}
+.log-entry.error {
+  border-left-color: #FF6B6B;
+  color: #ffcccb;
+}
+.log-entry.info {
+  border-left-color: #FFA07A;
+}
+#log-lines {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px;
+  background: #0f0f1e;
+  border-radius: 4px;
+}
+.workflow-block {
+  position: relative;
+  padding: 15px;
+  margin: 10px;
+  border-radius: 6px;
+  color: white;
+  font-size: 13px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+.workflow-block:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+.workflow-block.pending {
+  opacity: 0.6;
+}
+.workflow-block.running {
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.workflow-block.done {
+  opacity: 1;
+  border: 2px solid #4ade80;
+}
+.workflow-block.error {
+  opacity: 1;
+  border: 2px solid #ff6b6b;
+}
+.dataset { background: linear-gradient(135deg, #FF6B6B 0%, #ff8787 100%); }
+.model { background: linear-gradient(135deg, #4ECDC4 0%, #45B7D1 100%); }
+.train { background: linear-gradient(135deg, #45B7D1 0%, #3b9ec3 100%); }
+.evaluate { background: linear-gradient(135deg, #FFA07A 0%, #ff8c69 100%); }
+.attack { background: linear-gradient(135deg, #FF6B9D 0%, #ff5c8a 100%); }
+.robustness { background: linear-gradient(135deg, #C44569 0%, #b0304d 100%); }
+.analysis { background: linear-gradient(135deg, #95E1D3 0%, #7ed3c6 100%); }
+.export { background: linear-gradient(135deg, #F38181 0%, #f06f6f 100%); }
+</style>
 </head>
 <body>
 
@@ -14,7 +104,7 @@
     <span class="brand-mark">CN</span>
     <div>
       <div class="brand-title">CNN Adversarial Robustness Research Platform</div>
-      <div class="brand-sub">Local full-stack lab — dataset → training → attacks → robustness → analysis</div>
+      <div class="brand-sub">Live Workflow Builder — Dataset → Training → Attacks → Analysis</div>
     </div>
   </div>
   <div class="topbar-status" id="global-status">
@@ -38,18 +128,26 @@
     <a href="#block-gradcam">9 · Grad-CAM</a>
     <a href="#block-metrics">10 · Complexity Metrics</a>
     <a href="#block-stats">11 · Statistical Analysis</a>
-    <a href="#block-pipeline">12 · Run Pipeline</a>
-    <a href="#block-results">13 · Results Dashboard</a>
-    <a href="#block-report">14 · Export Report</a>
+    <a href="#block-results">12 · Results Dashboard</a>
+    <a href="#block-report">13 · Export Report</a>
   </nav>
 
   <main class="content">
+
+    <!-- ============ WORKFLOW CANVAS ============ -->
+    <section class="block workflow-container">
+      <div class="block-head">
+        <h2>Visual Workflow Builder</h2>
+        <p class="hint">Click any button below to add it to the workflow. Drag blocks to reposition.</p>
+      </div>
+      <canvas id="workflow-canvas"></canvas>
+    </section>
 
     <!-- ============ 1. DATASET ============ -->
     <section class="block" id="block-dataset">
       <div class="block-head">
         <h2>1 · Dataset</h2>
-        <label class="block-check"><input type="checkbox" data-pipeline="dataset" disabled> include in pipeline (load blocks run individually)</label>
+        <label class="block-check"><input type="checkbox" data-pipeline="dataset" disabled> include in pipeline</label>
       </div>
       <div class="tabs" id="dataset-tabs">
         <button class="tab active" data-tab="builtin">Built-in</button>
@@ -84,7 +182,6 @@
           <label>Batch size <input type="number" id="kaggle-batch" value="32"></label>
           <label>Val split <input type="number" step="0.05" id="kaggle-valsplit" value="0.2"></label>
         </div>
-        <p class="hint">Dataset must be organised as one folder per class (standard for Kaggle image-classification sets). Credentials are only used server-side to call the Kaggle API.</p>
         <button class="btn-run" onclick="runKaggleDataset()">Download &amp; load</button>
       </div>
 
@@ -245,47 +342,30 @@
       <div class="result-box" id="result-stats"></div>
     </section>
 
-    <!-- ============ 12. PIPELINE ============ -->
-    <section class="block" id="block-pipeline">
-      <div class="block-head"><h2>12 · Run Pipeline (multiple blocks, one click)</h2></div>
-      <p class="hint">Tick any blocks below and run them together, in sequence, using the parameters currently set in each block above.</p>
-      <div class="pipeline-checks">
-        <label><input type="checkbox" value="train_clean" class="pipeline-step"> Clean training</label>
-        <label><input type="checkbox" value="train_adversarial" class="pipeline-step"> Adversarial/robust training</label>
-        <label><input type="checkbox" value="eval_clean" class="pipeline-step"> Clean evaluation</label>
-        <label><input type="checkbox" value="attack" class="pipeline-step" data-attack="fgsm"> FGSM attack</label>
-        <label><input type="checkbox" value="attack" class="pipeline-step" data-attack="pgd"> PGD attack</label>
-        <label><input type="checkbox" value="smoothing" class="pipeline-step"> Randomized smoothing</label>
-        <label><input type="checkbox" value="gradcam" class="pipeline-step"> Grad-CAM</label>
-        <label><input type="checkbox" value="metrics" class="pipeline-step"> Complexity metrics</label>
-        <label><input type="checkbox" value="stats" class="pipeline-step"> Statistical analysis</label>
-      </div>
-      <button class="btn-run" onclick="runPipeline()">Run selected blocks</button>
-      <div class="progress" id="progress-pipeline"><div class="progress-bar"></div></div>
-      <div class="result-box" id="result-pipeline"></div>
-    </section>
-
-    <!-- ============ 13. RESULTS DASHBOARD ============ -->
+    <!-- ============ 12. RESULTS DASHBOARD ============ -->
     <section class="block" id="block-results">
       <div class="block-head">
-        <h2>13 · Results Dashboard</h2>
+        <h2>12 · Results Dashboard</h2>
         <button class="btn-secondary" onclick="refreshState()">Refresh</button>
       </div>
       <div id="results-summary"></div>
       <div id="results-plots" class="gallery"></div>
     </section>
 
-    <!-- ============ 14. REPORT ============ -->
+    <!-- ============ 13. REPORT ============ -->
     <section class="block" id="block-report">
-      <div class="block-head"><h2>14 · Export Full Research Report</h2></div>
+      <div class="block-head"><h2>13 · Export Full Research Report</h2></div>
       <p class="hint">Bundles setup, clean/adversarial accuracy, certified robustness, statistics, plots and Grad-CAM into one downloadable HTML report.</p>
       <a class="btn-run" style="display:inline-block;text-decoration:none;" href="/api/report/download">Download report</a>
     </section>
 
-    <div class="log-panel">
-      <div class="log-title">Live log</div>
+    <!-- ============ LIVE LOG ============ -->
+    <section class="block">
+      <div class="block-head">
+        <h2>📊 Live Log & Training Progress</h2>
+      </div>
       <div id="log-lines"></div>
-    </div>
+    </section>
 
   </main>
 </div>
