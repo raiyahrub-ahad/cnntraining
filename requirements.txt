@@ -1,0 +1,28 @@
+# Core web framework
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+pydantic==2.9.2
+
+# Deep learning
+# NOTE: install the torch/torchvision build that matches your CUDA version
+# from https://pytorch.org/get-started/locally/ BEFORE running `pip install -r requirements.txt`
+# if you want GPU acceleration, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+torch>=2.2.0
+torchvision>=0.17.0
+
+# Adversarial attacks
+torchattacks==3.5.1
+
+# Model complexity (FLOPs/params)
+thop==0.1.1.post2209072238
+
+# Dataset ingestion
+kaggle==1.6.17
+
+# Numerics / plotting / images
+numpy>=1.26
+matplotlib>=3.8
+pillow>=10.0
+scipy>=1.11

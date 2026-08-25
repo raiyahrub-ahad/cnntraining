@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN Adversarial Robustness Research Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">CN</span>
+    <div>
+      <div class="brand-title">CNN Adversarial Robustness Research Platform</div>
+      <div class="brand-sub">Local full-stack lab — dataset → training → attacks → robustness → analysis</div>
+    </div>
+  </div>
+  <div class="topbar-status" id="global-status">
+    <span class="dot" id="device-dot"></span>
+    <span id="device-label">connecting…</span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ============ SIDEBAR NAV ============ -->
+  <nav class="sidebar">
+    <a href="#block-dataset">1 · Dataset</a>
+    <a href="#block-model">2 · Model</a>
+    <a href="#block-enhance">3 · Architecture Enhancement</a>
+    <a href="#block-train-clean">4 · Clean Training</a>
+    <a href="#block-train-adv">5 · Adversarial / Robust Training</a>
+    <a href="#block-eval-clean">6 · Clean Evaluation</a>
+    <a href="#block-attacks">7 · Adversarial Attacks</a>
+    <a href="#block-smoothing">8 · Certified Robustness</a>
+    <a href="#block-gradcam">9 · Grad-CAM</a>
+    <a href="#block-metrics">10 · Complexity Metrics</a>
+    <a href="#block-stats">11 · Statistical Analysis</a>
+    <a href="#block-pipeline">12 · Run Pipeline</a>
+    <a href="#block-results">13 · Results Dashboard</a>
+    <a href="#block-report">14 · Export Report</a>
+  </nav>
+
+  <main class="content">
+
+    <!-- ============ 1. DATASET ============ -->
+    <section class="block" id="block-dataset">
+      <div class="block-head">
+        <h2>1 · Dataset</h2>
+        <label class="block-check"><input type="checkbox" data-pipeline="dataset" disabled> include in pipeline (load blocks run individually)</label>
+      </div>
+      <div class="tabs" id="dataset-tabs">
+        <button class="tab active" data-tab="builtin">Built-in</button>
+        <button class="tab" data-tab="kaggle">Kaggle API</button>
+        <button class="tab" data-tab="urls">Image URLs</button>
+        <button class="tab" data-tab="upload">Upload ZIP</button>
+      </div>
+
+      <div class="tab-panel active" data-panel="builtin">
+        <div class="field-row">
+          <label>Dataset <select id="builtin-name">
+            <option value="cifar10">CIFAR-10</option>
+            <option value="cifar100">CIFAR-100</option>
+            <option value="mnist">MNIST</option>
+            <option value="fashionmnist">FashionMNIST</option>
+          </select></label>
+          <label>Batch size <input type="number" id="builtin-batch" value="64"></label>
+        </div>
+        <button class="btn-run" onclick="runBuiltinDataset()">Load dataset</button>
+      </div>
+
+      <div class="tab-panel" data-panel="kaggle">
+        <div class="field-row">
+          <label>Dataset slug <input type="text" id="kaggle-slug" placeholder="username/dataset-name"></label>
+        </div>
+        <div class="field-row">
+          <label>Kaggle username <input type="text" id="kaggle-username"></label>
+          <label>Kaggle API key <input type="password" id="kaggle-key"></label>
+        </div>
+        <div class="field-row">
+          <label>Image size <input type="number" id="kaggle-imgsize" value="128"></label>
+          <label>Batch size <input type="number" id="kaggle-batch" value="32"></label>
+          <label>Val split <input type="number" step="0.05" id="kaggle-valsplit" value="0.2"></label>
+        </div>
+        <p class="hint">Dataset must be organised as one folder per class (standard for Kaggle image-classification sets). Credentials are only used server-side to call the Kaggle API.</p>
+        <button class="btn-run" onclick="runKaggleDataset()">Download &amp; load</button>
+      </div>
+
+      <div class="tab-panel" data-panel="urls">
+        <p class="hint">One row per image: <code>label,url</code></p>
+        <textarea id="urls-textarea" rows="6" placeholder="cat,https://example.com/cat1.jpg&#10;dog,https://example.com/dog1.jpg"></textarea>
+        <div class="field-row">
+          <label>Image size <input type="number" id="urls-imgsize" value="128"></label>
+          <label>Batch size <input type="number" id="urls-batch" value="16"></label>
+        </div>
+        <button class="btn-run" onclick="runUrlDataset()">Download &amp; load</button>
+      </div>
+
+      <div class="tab-panel" data-panel="upload">
+        <p class="hint">ZIP with one subfolder per class (ImageFolder layout).</p>
+        <input type="file" id="upload-file" accept=".zip">
+        <div class="field-row">
+          <label>Image size <input type="number" id="upload-imgsize" value="128"></label>
+          <label>Batch size <input type="number" id="upload-batch" value="32"></label>
+        </div>
+        <button class="btn-run" onclick="runUploadDataset()">Upload &amp; load</button>
+      </div>
+
+      <div class="result-box" id="result-dataset"></div>
+    </section>
+
+    <!-- ============ 2. MODEL ============ -->
+    <section class="block" id="block-model">
+      <div class="block-head"><h2>2 · Model Selection</h2></div>
+      <div class="field-row">
+        <label>Backbone <select id="model-name">
+          <option value="simplecnn">SimpleCNN (fast baseline)</option>
+          <option value="resnet18">ResNet-18</option>
+          <option value="resnet34">ResNet-34</option>
+          <option value="vgg16">VGG-16</option>
+          <option value="mobilenet_v2">MobileNetV2</option>
+          <option value="efficientnet_b0">EfficientNet-B0</option>
+        </select></label>
+        <label class="block-check"><input type="checkbox" id="model-pretrained"> ImageNet pretrained</label>
+      </div>
+      <button class="btn-run" onclick="runModelSelect()">Select model</button>
+      <div class="result-box" id="result-model"></div>
+    </section>
+
+    <!-- ============ 3. ENHANCEMENT ============ -->
+    <section class="block" id="block-enhance">
+      <div class="block-head"><h2>3 · Architectural Enhancement</h2></div>
+      <p class="hint">Splice a module onto the backbone's feature extractor, one click.</p>
+      <div class="field-row">
+        <label>Enhancement <select id="enhance-kind">
+          <option value="none">None (baseline)</option>
+          <option value="spp">Pyramid Pooling Module</option>
+          <option value="adaptive_ppm">Adaptive Pyramid Pooling</option>
+          <option value="feature_denoise">Feature Denoising Block (novel, robustness-oriented)</option>
+        </select></label>
+      </div>
+      <button class="btn-run" onclick="runEnhance()">Apply enhancement</button>
+      <div class="result-box" id="result-enhance"></div>
+    </section>
+
+    <!-- ============ 4. CLEAN TRAINING ============ -->
+    <section class="block" id="block-train-clean">
+      <div class="block-head"><h2>4 · Clean Training</h2></div>
+      <div class="field-row">
+        <label>Epochs <input type="number" id="clean-epochs" value="5"></label>
+        <label>Learning rate <input type="number" step="0.0001" id="clean-lr" value="0.001"></label>
+      </div>
+      <button class="btn-run" onclick="runTrainClean()">Train (clean)</button>
+      <div class="progress" id="progress-train-clean"><div class="progress-bar"></div></div>
+      <div class="result-box" id="result-train-clean"></div>
+    </section>
+
+    <!-- ============ 5. ADVERSARIAL / ROBUST TRAINING ============ -->
+    <section class="block" id="block-train-adv">
+      <div class="block-head"><h2>5 · Adversarial / Robust Training</h2></div>
+      <div class="field-row">
+        <label>Method <select id="adv-method">
+          <option value="fgsm_at">FGSM adversarial training</option>
+          <option value="pgd_at">PGD adversarial training</option>
+          <option value="trades">TRADES (KL-regularized, novel)</option>
+          <option value="awp_pgd_at">PGD-AT + Adversarial Weight Perturbation (novel)</option>
+        </select></label>
+      </div>
+      <div class="field-row">
+        <label>Epsilon <input type="number" step="0.001" id="adv-eps" value="0.031"></label>
+        <label>Alpha <input type="number" step="0.001" id="adv-alpha" value="0.0078"></label>
+        <label>Steps <input type="number" id="adv-steps" value="7"></label>
+      </div>
+      <div class="field-row">
+        <label>Epochs <input type="number" id="adv-epochs" value="5"></label>
+        <label>Learning rate <input type="number" step="0.0001" id="adv-lr" value="0.001"></label>
+        <label>TRADES beta <input type="number" step="0.5" id="adv-beta" value="6"></label>
+        <label>AWP gamma <input type="number" step="0.005" id="adv-awpgamma" value="0.01"></label>
+      </div>
+      <button class="btn-run" onclick="runTrainAdv()">Run robust training</button>
+      <div class="progress" id="progress-train-adv"><div class="progress-bar"></div></div>
+      <div class="result-box" id="result-train-adv"></div>
+    </section>
+
+    <!-- ============ 6. CLEAN EVAL ============ -->
+    <section class="block" id="block-eval-clean">
+      <div class="block-head"><h2>6 · Clean Accuracy</h2></div>
+      <button class="btn-run" onclick="runEvalClean()">Evaluate clean accuracy</button>
+      <div class="result-box" id="result-eval-clean"></div>
+    </section>
+
+    <!-- ============ 7. ATTACKS ============ -->
+    <section class="block" id="block-attacks">
+      <div class="block-head"><h2>7 · Adversarial Attacks</h2></div>
+      <p class="hint">Each card runs independently — click any number of them; they execute concurrently.</p>
+      <div class="attack-grid" id="attack-grid"></div>
+    </section>
+
+    <!-- ============ 8. CERTIFIED ROBUSTNESS ============ -->
+    <section class="block" id="block-smoothing">
+      <div class="block-head"><h2>8 · Certified Robustness — Randomized Smoothing (novel)</h2></div>
+      <p class="hint">Majority vote over Gaussian-noised copies; reports smoothed accuracy and an approximate certified L2 radius (Cohen et al.).</p>
+      <div class="field-row">
+        <label>Sigma <input type="number" step="0.05" id="smooth-sigma" value="0.25"></label>
+        <label>Noise samples <input type="number" id="smooth-n" value="50"></label>
+        <label>Max batches <input type="number" id="smooth-maxbatch" value="10"></label>
+      </div>
+      <button class="btn-run" onclick="runSmoothing()">Run randomized smoothing</button>
+      <div class="result-box" id="result-smoothing"></div>
+    </section>
+
+    <!-- ============ 9. GRAD-CAM ============ -->
+    <section class="block" id="block-gradcam">
+      <div class="block-head"><h2>9 · Grad-CAM &amp; Failure Cases</h2></div>
+      <div class="field-row">
+        <label>Mode <select id="gradcam-mode">
+          <option value="clean">Clean</option>
+          <option value="adversarial">Adversarial</option>
+        </select></label>
+        <label>Attack (if adversarial) <select id="gradcam-attack">
+          <option value="fgsm">FGSM</option>
+          <option value="ifgsm">I-FGSM</option>
+          <option value="pgd">PGD</option>
+        </select></label>
+        <label>Samples <input type="number" id="gradcam-n" value="8"></label>
+      </div>
+      <button class="btn-run" onclick="runGradcam()">Generate Grad-CAM</button>
+      <div class="result-box gallery" id="result-gradcam"></div>
+    </section>
+
+    <!-- ============ 10. METRICS ============ -->
+    <section class="block" id="block-metrics">
+      <div class="block-head"><h2>10 · Complexity Metrics (FLOPs / Params / Latency)</h2></div>
+      <button class="btn-run" onclick="runMetrics()">Compute metrics</button>
+      <div class="result-box" id="result-metrics"></div>
+    </section>
+
+    <!-- ============ 11. STATISTICS ============ -->
+    <section class="block" id="block-stats">
+      <div class="block-head"><h2>11 · Statistical Analysis</h2></div>
+      <p class="hint">Paired McNemar test: clean vs. each attack you've run, on the same samples.</p>
+      <button class="btn-run" onclick="runStats()">Run statistical analysis</button>
+      <div class="result-box" id="result-stats"></div>
+    </section>
+
+    <!-- ============ 12. PIPELINE ============ -->
+    <section class="block" id="block-pipeline">
+      <div class="block-head"><h2>12 · Run Pipeline (multiple blocks, one click)</h2></div>
+      <p class="hint">Tick any blocks below and run them together, in sequence, using the parameters currently set in each block above.</p>
+      <div class="pipeline-checks">
+        <label><input type="checkbox" value="train_clean" class="pipeline-step"> Clean training</label>
+        <label><input type="checkbox" value="train_adversarial" class="pipeline-step"> Adversarial/robust training</label>
+        <label><input type="checkbox" value="eval_clean" class="pipeline-step"> Clean evaluation</label>
+        <label><input type="checkbox" value="attack" class="pipeline-step" data-attack="fgsm"> FGSM attack</label>
+        <label><input type="checkbox" value="attack" class="pipeline-step" data-attack="pgd"> PGD attack</label>
+        <label><input type="checkbox" value="smoothing" class="pipeline-step"> Randomized smoothing</label>
+        <label><input type="checkbox" value="gradcam" class="pipeline-step"> Grad-CAM</label>
+        <label><input type="checkbox" value="metrics" class="pipeline-step"> Complexity metrics</label>
+        <label><input type="checkbox" value="stats" class="pipeline-step"> Statistical analysis</label>
+      </div>
+      <button class="btn-run" onclick="runPipeline()">Run selected blocks</button>
+      <div class="progress" id="progress-pipeline"><div class="progress-bar"></div></div>
+      <div class="result-box" id="result-pipeline"></div>
+    </section>
+
+    <!-- ============ 13. RESULTS DASHBOARD ============ -->
+    <section class="block" id="block-results">
+      <div class="block-head">
+        <h2>13 · Results Dashboard</h2>
+        <button class="btn-secondary" onclick="refreshState()">Refresh</button>
+      </div>
+      <div id="results-summary"></div>
+      <div id="results-plots" class="gallery"></div>
+    </section>
+
+    <!-- ============ 14. REPORT ============ -->
+    <section class="block" id="block-report">
+      <div class="block-head"><h2>14 · Export Full Research Report</h2></div>
+      <p class="hint">Bundles setup, clean/adversarial accuracy, certified robustness, statistics, plots and Grad-CAM into one downloadable HTML report.</p>
+      <a class="btn-run" style="display:inline-block;text-decoration:none;" href="/api/report/download">Download report</a>
+    </section>
+
+    <div class="log-panel">
+      <div class="log-title">Live log</div>
+      <div id="log-lines"></div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
